@@ -7,12 +7,11 @@ import plotly.graph_objects as go
 import networkx as nx
 import time
 import base64
+import io
 from ecosystem_model import run_lotka_volterra, run_habitat_change_simulation
 from visualization import plot_population_trends, plot_ecological_network, plot_phase_space
 from preset_scenarios import get_preset_scenarios
 from utils import save_scenario, load_scenario, export_simulation_data, calculate_ecosystem_metrics
-from multispecies import create_food_web_example
-from visualization_multi import plot_multi_species, plot_food_web
 
 # Set page configuration
 st.set_page_config(
@@ -39,7 +38,7 @@ st.markdown("""
 """)
 
 # Main layout with tabs
-tab1, tab2, tab3 = st.tabs(["Simulator", "Ecological Network", "About"])
+tab1, tab2, tab3, tab4 = st.tabs(["Simulator", "Ecological Network", "Data Analysis", "About"])
 
 with tab1:
     # Sidebar for controls
@@ -379,6 +378,175 @@ with tab2:
         st.info("Run a simulation first to visualize the ecological network.")
 
 with tab3:
+    st.subheader("Data Analysis & Insights")
+    
+    if st.session_state.simulation_results is None:
+        st.info("Run a simulation first to see data analysis.")
+    else:
+        plot_data = st.session_state.simulation_results
+        
+        # Calculate advanced metrics
+        metrics = calculate_ecosystem_metrics(plot_data['results'])
+        
+        # Create two columns
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            # Correlation Analysis
+            st.subheader("Population Correlation Analysis")
+            
+            prey_pop = plot_data['results'][:, 0]
+            predator_pop = plot_data['results'][:, 1]
+            
+            # Calculate correlation coefficient
+            correlation = np.corrcoef(prey_pop, predator_pop)[0, 1]
+            
+            # Display correlation with explanation
+            st.metric("Correlation Coefficient", f"{correlation:.3f}")
+            
+            if correlation > 0.7:
+                st.success("Strong positive correlation: Predator and prey populations tend to increase and decrease together.")
+            elif correlation > 0.3:
+                st.info("Moderate positive correlation: Some synchronization between populations.")
+            elif correlation > -0.3:
+                st.info("Weak correlation: Populations not strongly related in their movements.")
+            elif correlation > -0.7:
+                st.warning("Moderate negative correlation: When one population increases, the other tends to decrease.")
+            else:
+                st.error("Strong negative correlation: Clear predator-prey cycles with inverse movements.")
+                
+            # Scatter plot with regression line
+            fig, ax = plt.subplots(figsize=(8, 5))
+            ax.scatter(prey_pop, predator_pop, alpha=0.5, s=5)
+            
+            # Add regression line
+            m, b = np.polyfit(prey_pop, predator_pop, 1)
+            x_line = np.linspace(min(prey_pop), max(prey_pop), 100)
+            ax.plot(x_line, m * x_line + b, 'r-')
+            
+            ax.set_xlabel('Prey Population')
+            ax.set_ylabel('Predator Population')
+            ax.set_title('Predator vs Prey Population Correlation')
+            ax.grid(alpha=0.3)
+            st.pyplot(fig)
+        
+        with col2:
+            # FFT Analysis to find dominant cycle frequencies
+            st.subheader("Cycle Analysis")
+            
+            # Detrend the data
+            prey_detrended = prey_pop - np.mean(prey_pop)
+            
+            # Perform FFT
+            fft_values = np.fft.rfft(prey_detrended)
+            fft_freq = np.fft.rfftfreq(len(prey_detrended))
+            
+            # Get dominant frequencies
+            idx = np.argsort(np.abs(fft_values))[-5:]  # Get indices of top 5 amplitudes
+            dominant_cycles = 1 / fft_freq[idx]
+            
+            # Filter out infinity and very large values
+            dominant_cycles = [c for c in dominant_cycles if c != np.inf and c < len(prey_pop)]
+            
+            if dominant_cycles:
+                main_cycle = np.mean(dominant_cycles[:2]) if len(dominant_cycles) >= 2 else dominant_cycles[0]
+                st.metric("Dominant Cycle Length", f"{main_cycle:.1f} time units")
+                
+                # Plot power spectrum
+                fig, ax = plt.subplots(figsize=(8, 5))
+                # Only plot meaningful frequency range (exclude very low frequencies)
+                meaningful_idx = np.where((fft_freq > 0) & (fft_freq < 0.5))
+                ax.plot(1/fft_freq[meaningful_idx], np.abs(fft_values[meaningful_idx]))
+                ax.set_xlabel('Cycle Length (time units)')
+                ax.set_ylabel('Amplitude')
+                ax.set_title('Power Spectrum - Dominant Cycles')
+                st.pyplot(fig)
+            else:
+                st.info("No clear cyclical patterns detected.")
+
+        # System stability analysis
+        st.subheader("Ecosystem Stability Analysis")
+        
+        # Create columns for stability metrics
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            # Overall stability score
+            stability_score = metrics['ecosystem_stability']
+            if np.isinf(stability_score):
+                stability_score = 10.0  # Cap at a reasonable maximum
+                
+            st.metric("Overall Stability", f"{min(stability_score, 10):.2f}/10")
+            
+            # Stability classification
+            if stability_score > 5:
+                st.success("Highly stable ecosystem")
+            elif stability_score > 2:
+                st.info("Moderately stable ecosystem")
+            else:
+                st.warning("Unstable ecosystem")
+                
+        with col2:
+            # Prey variation
+            st.metric("Prey Stability", f"{(1 - min(metrics['prey_cv'], 1)) * 10:.1f}/10", 
+                    help="Higher values indicate more stable prey population")
+            
+            # Phase space classification
+            if metrics['prey_peaks_count'] > 0:
+                st.metric("Cycling Behavior", f"{metrics['prey_peaks_count']} cycles detected")
+            else:
+                st.metric("Cycling Behavior", "No cycles detected")
+                
+        with col3:
+            # Predator variation
+            st.metric("Predator Stability", f"{(1 - min(metrics['predator_cv'], 1)) * 10:.1f}/10",
+                    help="Higher values indicate more stable predator population")
+            
+            # Trend analysis
+            prey_trend = (metrics['final_prey'] - prey_pop[0]) / prey_pop[0] * 100
+            predator_trend = (metrics['final_predator'] - predator_pop[0]) / predator_pop[0] * 100
+            
+            if abs(prey_trend) < 10 and abs(predator_trend) < 10:
+                st.info("Populations remain near initial values")
+            elif prey_trend > 0 and predator_trend > 0:
+                st.success("Both populations growing")
+            elif prey_trend < 0 and predator_trend < 0:
+                st.error("Both populations declining")
+            elif prey_trend > 0 and predator_trend < 0:
+                st.warning("Prey growing, predators declining")
+            else:
+                st.warning("Prey declining, predators growing")
+                
+        # Export options
+        st.subheader("Export Analysis")
+        
+        # Create a comprehensive DataFrame
+        times = plot_data['times']
+        analysis_df = pd.DataFrame({
+            'Time': times,
+            'Prey_Population': prey_pop,
+            'Predator_Population': predator_pop
+        })
+        
+        # Add rolling statistics (moving averages)
+        window = min(50, len(times) // 5)  # 20% of time series or 50 points, whichever is smaller
+        analysis_df['Prey_MovingAvg'] = analysis_df['Prey_Population'].rolling(window=window).mean()
+        analysis_df['Predator_MovingAvg'] = analysis_df['Predator_Population'].rolling(window=window).mean()
+        
+        # Add relative change columns
+        analysis_df['Prey_PctChange'] = analysis_df['Prey_Population'].pct_change() * 100
+        analysis_df['Predator_PctChange'] = analysis_df['Predator_Population'].pct_change() * 100
+        
+        # Offer CSV download
+        csv_data = analysis_df.to_csv(index=False)
+        st.download_button(
+            label="📊 Download Full Analysis (CSV)",
+            data=csv_data,
+            file_name="ecosystem_analysis_data.csv",
+            mime="text/csv"
+        )
+
+with tab4:
     st.subheader("About the Virtual Ecosystem Simulator")
     
     st.markdown("""
