@@ -38,7 +38,7 @@ st.markdown("""
 """)
 
 # Main layout with tabs
-tab1, tab2, tab3, tab4 = st.tabs(["Simulator", "Ecological Network", "Data Analysis", "About"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Simulator", "Ecological Network", "Data Analysis", "Scenario Research", "About"])
 
 with tab1:
     # Sidebar for controls
@@ -547,6 +547,100 @@ with tab3:
         )
 
 with tab4:
+    st.subheader("Scenario Research & Species Information")
+    
+    st.markdown("""
+    This section provides detailed information about the real-world ecosystems and species
+    represented in the simulation presets. Each scenario is based on actual ecological research.
+    """)
+    
+    # Get preset scenarios for reference
+    all_scenarios = get_preset_scenarios()
+    
+    # Create scenario selector
+    selected_scenario = st.selectbox(
+        "Select a scenario to learn more:",
+        list(all_scenarios.keys())
+    )
+    
+    if selected_scenario:
+        scenario = all_scenarios[selected_scenario]
+        
+        # Display scenario information in an organized way
+        st.subheader(f"🌍 {selected_scenario}")
+        st.markdown(f"**Description:** {scenario.get('description', 'No description available.')}")
+        
+        # Create columns for prey and predator info
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("### 🦌 Prey Species")
+            st.markdown(f"**Species:** {scenario.get('prey_species', 'Generic Prey')}")
+            st.markdown(f"**Initial Population:** {scenario.get('initial_prey', 'N/A')}")
+            st.markdown(f"**Growth Rate:** {scenario.get('prey_growth_rate', 'N/A')}")
+            st.markdown(f"**Death Rate:** {scenario.get('prey_death_rate', 'N/A')}")
+            
+            # Display image if available based on species name
+            prey_species = scenario.get('prey_species', '').lower()
+            if 'rabbit' in prey_species or 'hare' in prey_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/1/1f/Oryctolagus_cuniculus_Tasmania_2.jpg/640px-Oryctolagus_cuniculus_Tasmania_2.jpg", 
+                         caption=scenario.get('prey_species', 'Herbivore'), width=300)
+            elif 'deer' in prey_species or 'elk' in prey_species or 'moose' in prey_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Elk_at_Rocky_Mountain_National_Park.jpg/640px-Elk_at_Rocky_Mountain_National_Park.jpg", 
+                         caption=scenario.get('prey_species', 'Ungulate'), width=300)
+            elif 'fish' in prey_species or 'herring' in prey_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Clupea_harengus.jpg/640px-Clupea_harengus.jpg", 
+                         caption=scenario.get('prey_species', 'Fish'), width=300)
+            elif 'zebra' in prey_species or 'wildebeest' in prey_species or 'gazelle' in prey_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Plains_Zebra_Equus_quagga.jpg/640px-Plains_Zebra_Equus_quagga.jpg", 
+                         caption=scenario.get('prey_species', 'Savanna Herbivore'), width=300)
+        
+        with col2:
+            st.markdown("### 🐺 Predator Species")
+            st.markdown(f"**Species:** {scenario.get('predator_species', 'Generic Predator')}")
+            st.markdown(f"**Initial Population:** {scenario.get('initial_predator', 'N/A')}")
+            st.markdown(f"**Death Rate:** {scenario.get('predator_death_rate', 'N/A')}")
+            st.markdown(f"**Growth Rate from Predation:** {scenario.get('predator_growth_rate', 'N/A')}")
+            
+            # Display image if available based on species name
+            predator_species = scenario.get('predator_species', '').lower()
+            if 'wolf' in predator_species or 'coyote' in predator_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Canis_lupus_laying.jpg/640px-Canis_lupus_laying.jpg", 
+                         caption=scenario.get('predator_species', 'Canid Predator'), width=300)
+            elif 'lynx' in predator_species or 'cat' in predator_species or 'jaguar' in predator_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/6/63/Lynx_canadensis.jpg/640px-Lynx_canadensis.jpg", 
+                         caption=scenario.get('predator_species', 'Felid Predator'), width=300)
+            elif 'fox' in predator_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/Vulpes_vulpes_sitting.jpg/640px-Vulpes_vulpes_sitting.jpg", 
+                         caption=scenario.get('predator_species', 'Fox'), width=300)
+            elif 'lion' in predator_species or 'hyena' in predator_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/7/73/Lion_waiting_in_Namibia.jpg/640px-Lion_waiting_in_Namibia.jpg", 
+                         caption=scenario.get('predator_species', 'African Predator'), width=300)
+            elif 'shark' in predator_species or 'fish' in predator_species or 'cod' in predator_species:
+                st.image("https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Gadus_morhua_Cod-2b.jpg/640px-Gadus_morhua_Cod-2b.jpg", 
+                         caption=scenario.get('predator_species', 'Marine Predator'), width=300)
+        
+        # Habitat information
+        st.markdown("### 🏞️ Habitat Information")
+        st.markdown(f"**Region:** {scenario.get('region', 'Generic Ecosystem')}")
+        st.markdown(f"**Simulation Duration:** {scenario.get('time_span', 'N/A')} time units")
+        
+        # Environmental changes
+        if scenario.get('enable_env_change', False):
+            st.markdown("### 🔄 Environmental Change")
+            st.markdown(f"**Type:** {scenario.get('env_change_type', 'None')}")
+            st.markdown(f"**Starts at:** Time unit {scenario.get('env_change_start', 'N/A')}")
+            st.markdown(f"**Intensity:** {scenario.get('env_change_intensity', 'N/A')}%")
+            
+            if 'research_notes' in scenario:
+                st.info(f"**Research Notes:** {scenario['research_notes']}")
+        
+        # Add button to use this scenario
+        if st.button(f"Use {selected_scenario} Preset"):
+            st.session_state.current_scenario = scenario.copy()
+            st.success(f"Loaded {selected_scenario}. Go to the Simulator tab to run the simulation!")
+
+with tab5:
     st.subheader("About the Virtual Ecosystem Simulator")
     
     st.markdown("""
