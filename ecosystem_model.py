@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.integrate import solve_ivp
+import random
+import matplotlib.pyplot as plt
 
 def lotka_volterra_system(t, y, params):
     """

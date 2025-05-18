@@ -6,10 +6,11 @@ import plotly.express as px
 import plotly.graph_objects as go
 import networkx as nx
 import time
+import base64
 from ecosystem_model import run_lotka_volterra, run_habitat_change_simulation
-from visualization import plot_population_trends, plot_ecological_network
+from visualization import plot_population_trends, plot_ecological_network, plot_phase_space
 from preset_scenarios import get_preset_scenarios
-from utils import save_scenario, load_scenario
+from utils import save_scenario, load_scenario, export_simulation_data, calculate_ecosystem_metrics
 
 # Set page configuration
 st.set_page_config(
@@ -221,7 +222,7 @@ with tab1:
         plot_data = st.session_state.simulation_results
         
         # Create tabs for different visualization types
-        view_tab1, view_tab2 = st.tabs(["Line Chart", "Interactive Plot"])
+        view_tab1, view_tab2, view_tab3 = st.tabs(["Line Chart", "Interactive Plot", "Phase Space"])
         
         with view_tab1:
             fig_line = plot_population_trends(
@@ -240,6 +241,33 @@ with tab1:
                 plot_type='plotly'
             )
             st.plotly_chart(fig_plotly, use_container_width=True)
+            
+        with view_tab3:
+            fig_phase = plot_phase_space(plot_data['results'])
+            st.pyplot(fig_phase)
+            st.markdown("""
+            **Phase Space Interpretation:** 
+            
+            This diagram shows predator population (y-axis) versus prey population (x-axis). 
+            Each point represents the population state at a moment in time, with arrows showing the direction of change.
+            
+            - Circular patterns indicate cyclical population dynamics
+            - Spirals inward suggest stability over time
+            - Spirals outward suggest instability
+            - The starting point is marked in green, and the ending point in red
+            """)
+        
+        # Export functionality
+        st.download_button(
+            label="📊 Export Simulation Data (CSV)",
+            data=pd.DataFrame({
+                'Time': plot_data['times'],
+                'Prey': plot_data['results'][:, 0],
+                'Predator': plot_data['results'][:, 1]
+            }).to_csv(index=False),
+            file_name="ecosystem_simulation_data.csv",
+            mime="text/csv",
+        )
         
         # Display final population stats
         st.subheader("Final Population Statistics")
@@ -279,6 +307,51 @@ with tab1:
         
         if enable_env_change:
             st.markdown(f"**Environmental Change Effects:** The {env_change_type.lower()} that occurred at time {env_change_start} with {env_change_intensity}% intensity has affected the population dynamics.")
+            
+        # Population Stability Metrics section
+        st.subheader("Population Stability Metrics")
+        metrics = calculate_ecosystem_metrics(plot_data['results'])
+        
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Ecosystem Stability Score", f"{metrics['ecosystem_stability']:.2f}", 
+                     help="Higher values indicate a more stable ecosystem (lower coefficient of variation)")
+            st.metric("Prey Oscillation Period", f"{metrics['prey_period']:.1f}" if metrics['prey_period'] > 0 else "N/A",
+                     help="Average time between prey population peaks")
+        
+        with col2:
+            st.metric("Prey Coefficient of Variation", f"{metrics['prey_cv']:.3f}",
+                    help="Measure of prey population variability (lower is more stable)")
+            st.metric("Prey Population Peaks", f"{metrics['prey_peaks_count']}",
+                    help="Number of prey population peaks detected")
+        
+        with col3:
+            st.metric("Predator Coefficient of Variation", f"{metrics['predator_cv']:.3f}",
+                    help="Measure of predator population variability (lower is more stable)")
+            st.metric("Phase Difference", f"{metrics['phase_difference']:.1f}" if metrics['phase_difference'] > 0 else "N/A",
+                    help="Time lag between prey and predator peaks")
+        
+        # Expandable detailed statistics
+        with st.expander("Detailed Statistics"):
+            st.markdown("### Raw Population Statistics")
+            stats_df = pd.DataFrame({
+                "Metric": ["Mean", "Standard Deviation", "Minimum", "Maximum", "Final Value"],
+                "Prey": [
+                    f"{metrics['prey_mean']:.2f}", 
+                    f"{metrics['prey_std']:.2f}", 
+                    f"{metrics['prey_min']:.2f}", 
+                    f"{metrics['prey_max']:.2f}",
+                    f"{metrics['final_prey']:.2f}"
+                ],
+                "Predator": [
+                    f"{metrics['predator_mean']:.2f}", 
+                    f"{metrics['predator_std']:.2f}", 
+                    f"{metrics['predator_min']:.2f}", 
+                    f"{metrics['predator_max']:.2f}",
+                    f"{metrics['final_predator']:.2f}"
+                ]
+            })
+            st.table(stats_df)
     else:
         st.info("Click 'Run Simulation' to see the ecosystem dynamics.")
 
