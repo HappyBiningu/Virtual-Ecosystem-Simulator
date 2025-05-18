@@ -66,3 +66,7 @@ Where:
 3. Enable environmental changes to simulate disturbances
 4. Click "Run Simulation" to see the results
 5. Analyze population dynamics and ecosystem stability
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
