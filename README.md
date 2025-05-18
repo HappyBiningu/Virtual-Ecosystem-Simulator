@@ -67,6 +67,26 @@ Where:
 4. Click "Run Simulation" to see the results
 5. Analyze population dynamics and ecosystem stability
 
+## Screenshots
+
+### Main Simulation Interface
+![Simulator](https://docimg.replit.com/images/teamsForEducation/autograding/student-view-results.png)
+- Interactive parameter controls
+- Real-time population graphs
+- Environmental change controls
+
+### Ecological Network View
+![Network](https://docimg.replit.com/images/teamsForEducation/autograding/teacher-edit-test.png)
+- Visual representation of species interactions
+- Color-coded relationships
+- Dynamic node sizing based on population
+
+### Data Analysis Dashboard
+![Analysis](https://docimg.replit.com/images/teamsForEducation/autograding/teacher-view-results.png)
+- Population statistics
+- Phase space diagrams
+- Stability metrics
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
