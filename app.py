@@ -11,6 +11,8 @@ from ecosystem_model import run_lotka_volterra, run_habitat_change_simulation
 from visualization import plot_population_trends, plot_ecological_network, plot_phase_space
 from preset_scenarios import get_preset_scenarios
 from utils import save_scenario, load_scenario, export_simulation_data, calculate_ecosystem_metrics
+from multispecies import create_food_web_example
+from visualization_multi import plot_multi_species, plot_food_web
 
 # Set page configuration
 st.set_page_config(

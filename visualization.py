@@ -3,6 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 import networkx as nx
 from matplotlib.patches import ConnectionPatch
+import matplotlib.cm as cm
 
 def plot_population_trends(times, results, events=None, plot_type='matplotlib'):
     """
